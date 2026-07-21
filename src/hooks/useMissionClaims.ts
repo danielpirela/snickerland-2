@@ -4,6 +4,7 @@ import {
   getMissionClaimKey,
   getMissionClaims,
   getMissionClaimsErrorMessage,
+  MISSION_CLAIMS_UPDATED_EVENT,
   markMissionClaimPaid,
   sortMissionClaims,
 } from '#/lib/missionClaims'
@@ -56,6 +57,20 @@ export function useMissionClaims({ allUsers = false }: { allUsers?: boolean } = 
     void refresh()
   }, [refresh])
 
+  useEffect(() => {
+    const onClaimsUpdated = (event: Event): void => {
+      const detail = (event as CustomEvent<{ error?: unknown }>).detail
+      const errorMessage = typeof detail?.error === 'string' ? detail.error : null
+
+      void refresh().then(() => {
+        if (errorMessage) setError(errorMessage)
+      })
+    }
+
+    window.addEventListener(MISSION_CLAIMS_UPDATED_EVENT, onClaimsUpdated)
+    return () => window.removeEventListener(MISSION_CLAIMS_UPDATED_EVENT, onClaimsUpdated)
+  }, [refresh])
+
   const claimsByDay = useMemo(
     () => new Map(claims.map((claim) => [getMissionClaimKey(claim.role_id, claim.day), claim])),
     [claims],
@@ -68,12 +83,19 @@ export function useMissionClaims({ allUsers = false }: { allUsers?: boolean } = 
   )
 
   const claimDay = useCallback(
-    async (roleId: string, day: number): Promise<MissionClaimRow | null> => {
+    async (
+      roleId: string,
+      day: number,
+      allTasksCompleted: boolean,
+    ): Promise<MissionClaimRow | null> => {
       const actionKey = `claim:${getMissionClaimKey(roleId, day)}`
       setPendingAction(actionKey)
       setError(null)
 
       try {
+        if (!allTasksCompleted) {
+          throw new Error('Completá las cinco tareas del día antes de reclamar la recompensa.')
+        }
         if (!username) {
           throw new Error('Iniciá sesión con tu username de Minecraft para reclamar recompensas.')
         }
@@ -83,7 +105,9 @@ export function useMissionClaims({ allUsers = false }: { allUsers?: boolean } = 
           )
         }
 
-        const claim = await createMissionClaim(username, roleId, day)
+        const claim = await createMissionClaim(username, roleId, day, {
+          allowRevokedReclaim: allTasksCompleted,
+        })
         setClaims((currentClaims) =>
           sortMissionClaims([
             ...currentClaims.filter(

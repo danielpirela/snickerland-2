@@ -9,6 +9,38 @@ import {
 export const SUPABASE_CLAIMS_REQUIRED_MESSAGE =
   'Los reclamos requieren Supabase configurado. Configurá VITE_SUPABASE_URL y VITE_SUPABASE_PUBLISHABLE_KEY para guardar y consultar reclamos.'
 
+export const MISSION_CLAIMS_UPDATED_EVENT = 'snickerland:mission-claims-updated'
+export const MISSION_CLAIM_REVOKED_REASON =
+  'Reclamo revocado: se desmarcó una tarea del día.'
+
+const claimOperationQueues = new Map<string, Promise<unknown>>()
+
+function notifyMissionClaimsUpdated(error?: unknown): void {
+  if (typeof window === 'undefined') return
+
+  const detail = error === undefined
+    ? undefined
+    : { error: getMissionClaimsErrorMessage(error) }
+  window.dispatchEvent(
+    new CustomEvent(MISSION_CLAIMS_UPDATED_EVENT, { detail }),
+  )
+}
+
+function queueClaimOperation<T>(key: string, operation: () => Promise<T>): Promise<T> {
+  const previous = claimOperationQueues.get(key) ?? Promise.resolve()
+  const next = previous.catch(() => undefined).then(operation)
+  claimOperationQueues.set(key, next)
+
+  const cleanup = () => {
+    if (claimOperationQueues.get(key) === next) {
+      claimOperationQueues.delete(key)
+    }
+  }
+  void next.then(cleanup, cleanup)
+
+  return next
+}
+
 export class MissionClaimsError extends Error {
   constructor(
     message: string,
@@ -69,6 +101,15 @@ export function getMissionClaimKey(roleId: string, day: number): string {
   return `${roleId}:${day}`
 }
 
+export function isMissionClaimRevoked(
+  claim: Pick<MissionClaimRow, 'status' | 'last_error'>,
+): boolean {
+  return (
+    claim.status === 'rejected' &&
+    claim.last_error === MISSION_CLAIM_REVOKED_REASON
+  )
+}
+
 export async function getMissionClaims(username?: string): Promise<MissionClaimRow[]> {
   const client = getClient()
   const query = client.from('mission_claims').select('*')
@@ -99,42 +140,118 @@ async function getMissionClaim(
   return data
 }
 
-/** Inserts a pending claim using reward data from the canonical quest definitions. */
+/**
+ * Inserts a pending claim using reward data from the canonical quest definitions.
+ * A revoked row can be reused only after the caller confirms the day is complete.
+ * The unique row is retained so there is still one active claim per day.
+ */
 export async function createMissionClaim(
   username: string,
   roleId: string,
   day: number,
+  options: { allowRevokedReclaim?: boolean } = {},
 ): Promise<MissionClaimRow> {
-  const client = getClient()
   const normalizedUsername = normalizeUsername(username)
   const reward = getQuestReward(roleId, day)
-  const { data, error } = await client
-    .from('mission_claims')
-    .insert({
-      username: normalizedUsername,
-      role_id: reward.roleId,
-      day: reward.day,
-      reward_amount: reward.amount,
-      reward_title: reward.title,
-    })
-    .select('*')
-    .single()
+  const operationKey = `${normalizedUsername}\u0000${getMissionClaimKey(reward.roleId, reward.day)}`
 
-  if (!error && data) return data
+  return queueClaimOperation(operationKey, async () => {
+    const client = getClient()
+    const { data, error } = await client
+      .from('mission_claims')
+      .insert({
+        username: normalizedUsername,
+        role_id: reward.roleId,
+        day: reward.day,
+        reward_amount: reward.amount,
+        reward_title: reward.title,
+      })
+      .select('*')
+      .single()
 
-  if (error?.code === '23505') {
-    const existing = await getMissionClaim(
-      normalizedUsername,
-      reward.roleId,
-      reward.day,
+    if (!error && data) return data
+
+    if (error?.code === '23505') {
+      const existing = await getMissionClaim(
+        normalizedUsername,
+        reward.roleId,
+        reward.day,
+      )
+
+      if (
+        existing &&
+        options.allowRevokedReclaim &&
+        isMissionClaimRevoked(existing)
+      ) {
+        const { data: reclaimed, error: reclaimError } = await client
+          .from('mission_claims')
+          .update({
+            status: 'pending',
+            processing_server: null,
+            processing_at: null,
+            last_error: null,
+          })
+          .eq('id', existing.id)
+          .eq('status', 'rejected')
+          .eq('last_error', MISSION_CLAIM_REVOKED_REASON)
+          .select('*')
+          .maybeSingle()
+
+        if (reclaimError) throw reclaimError
+        if (reclaimed) return reclaimed
+
+        const current = await getMissionClaim(
+          normalizedUsername,
+          reward.roleId,
+          reward.day,
+        )
+        if (current) return current
+      }
+
+      if (existing) return existing
+    }
+
+    if (error) throw error
+    throw new MissionClaimsError(
+      'Supabase no devolvió el reclamo creado. Actualizá la página e intentá de nuevo.',
     )
-    if (existing) return existing
-  }
+  })
+}
 
-  if (error) throw error
-  throw new MissionClaimsError(
-    'Supabase no devolvió el reclamo creado. Actualizá la página e intentá de nuevo.',
-  )
+/** Revokes only the matching user's pending claim without deleting its row. */
+export async function revokePendingMissionClaim(
+  username: string,
+  roleId: string,
+  day: number,
+): Promise<MissionClaimRow | null> {
+  const normalizedUsername = normalizeUsername(username)
+  const reward = getQuestReward(roleId, day)
+  const operationKey = `${normalizedUsername}\u0000${getMissionClaimKey(reward.roleId, reward.day)}`
+
+  return queueClaimOperation(operationKey, async () => {
+    try {
+      const client = getClient()
+      const { data, error } = await client
+        .from('mission_claims')
+        .update({
+          status: 'rejected',
+          last_error: MISSION_CLAIM_REVOKED_REASON,
+        })
+        .eq('username', normalizedUsername)
+        .eq('role_id', reward.roleId)
+        .eq('day', reward.day)
+        .eq('status', 'pending')
+        .select('*')
+        .maybeSingle()
+
+      if (error) throw error
+      notifyMissionClaimsUpdated()
+      return data
+    } catch (error) {
+      notifyMissionClaimsUpdated(error)
+      throw error
+    }
+  })
 }
 
 /** Marks only a pending claim as paid; callers cannot supply an arbitrary status. */
@@ -174,8 +291,9 @@ export async function markMissionClaimPaid(
 
 const claimStatusOrder: Record<MissionClaimStatus, number> = {
   pending: 0,
-  paid: 1,
-  rejected: 2,
+  processing: 1,
+  paid: 2,
+  rejected: 3,
 }
 
 export function sortMissionClaims(

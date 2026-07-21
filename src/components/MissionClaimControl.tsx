@@ -1,4 +1,5 @@
-import { CheckCircle2, Clock, Coins, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock, Coins, RefreshCw, XCircle } from 'lucide-react'
+import { isMissionClaimRevoked } from '#/lib/missionClaims'
 import type { MissionClaimRow } from '#/lib/supabase'
 
 interface MissionClaimControlProps {
@@ -48,19 +49,52 @@ export default function MissionClaimControl({
     )
   }
 
-  if (claim?.status === 'rejected') {
+  if (claim?.status === 'processing') {
     return (
       <span
         className="inline-flex items-center gap-1.5 border-2 px-3 py-2 text-sm font-bold"
         style={{
-          borderColor: 'var(--redstone)',
-          background: 'rgba(170,51,51,0.16)',
-          color: 'var(--redstone-light)',
+          borderColor: 'var(--gold)',
+          background: 'rgba(255,170,0,0.2)',
+          color: 'var(--gold-bright)',
         }}
       >
-        <XCircle className="h-4 w-4" />
-        Rechazada
+        <RefreshCw className="h-4 w-4 animate-spin" />
+        Procesando en el servidor
       </span>
+    )
+  }
+
+  if (claim?.status === 'rejected') {
+    const revoked = isMissionClaimRevoked(claim)
+
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className="inline-flex items-center gap-1.5 border-2 px-3 py-2 text-sm font-bold"
+          style={{
+            borderColor: 'var(--redstone)',
+            background: 'rgba(170,51,51,0.16)',
+            color: 'var(--redstone-light)',
+          }}
+        >
+          <XCircle className="h-4 w-4" />
+          {revoked ? 'Revocada' : 'Rechazada'}
+        </span>
+
+        {revoked && allTasksCompleted && (
+          <button
+            type="button"
+            className="mc-btn inline-flex items-center gap-2 px-3 py-2 disabled:cursor-wait disabled:opacity-60"
+            onClick={onClaim}
+            disabled={claimPending}
+            aria-busy={claimPending}
+          >
+            <Coins className="h-4 w-4" />
+            {claimPending ? 'Guardando...' : 'Reclamar recompensa'}
+          </button>
+        )}
+      </div>
     )
   }
 

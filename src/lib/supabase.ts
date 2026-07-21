@@ -16,7 +16,7 @@ export type MissionProgressInsert = Omit<MissionProgressRow, 'completed_at'> & {
 
 export type MissionProgressUpdate = Partial<MissionProgressRow>
 
-export type MissionClaimStatus = 'pending' | 'paid' | 'rejected'
+export type MissionClaimStatus = 'pending' | 'processing' | 'paid' | 'rejected'
 
 export type MissionClaimRow = {
   id: string
@@ -29,6 +29,9 @@ export type MissionClaimRow = {
   created_at: string
   paid_at: string | null
   paid_by: string | null
+  processing_server: string | null
+  processing_at: string | null
+  last_error: string | null
 }
 
 /** The insert shape intentionally omits status so the database default stays authoritative. */

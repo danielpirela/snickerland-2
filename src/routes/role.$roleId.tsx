@@ -175,7 +175,11 @@ function DayCard({
   areAllTasksCompleted: (roleId: string, day: number, total: number) => boolean
   claim: MissionClaimRow | null
   claimsLoading: boolean
-  claimDay: (roleId: string, day: number) => Promise<MissionClaimRow | null>
+   claimDay: (
+     roleId: string,
+     day: number,
+     allTasksCompleted: boolean,
+   ) => Promise<MissionClaimRow | null>
   claimPending: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -261,7 +265,7 @@ function DayCard({
               claimsLoading={claimsLoading}
               claimPending={claimPending}
               onClaim={() => {
-                void claimDay(roleId, day.day)
+                void claimDay(roleId, day.day, allDone)
               }}
             />
           </div>

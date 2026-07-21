@@ -1,5 +1,6 @@
 import { useAuth } from '#/contexts/AuthContext'
 import { roles } from '#/data/quests'
+import { revokePendingMissionClaim } from '#/lib/missionClaims'
 import {
   MISSION_PROGRESS_PAGE_SIZE,
   MISSION_PROGRESS_UPDATED_EVENT,
@@ -531,6 +532,10 @@ export function useQuestProgress() {
             if (error) throw error
           },
         )
+
+        if (nextMutation === 'unchecked') {
+          void revokePendingMissionClaim(username, roleId, day).catch(() => undefined)
+        }
       }
     },
     [username, persist],

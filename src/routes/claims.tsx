@@ -3,6 +3,7 @@ import { CheckCircle2, Clock, Coins, Database, RefreshCw, ShieldAlert, XCircle }
 import { useAuth } from '#/contexts/AuthContext'
 import { useMissionClaims } from '#/hooks/useMissionClaims'
 import { getRoleById } from '#/data/quests'
+import { isMissionClaimRevoked } from '#/lib/missionClaims'
 import { isSupabaseConfigured } from '#/lib/supabase'
 import type { MissionClaimRow, MissionClaimStatus } from '#/lib/supabase'
 import MissionClaimsNotice from '#/components/MissionClaimsNotice'
@@ -16,6 +17,7 @@ export const Route = createFileRoute('/claims')({
 
 const statusLabels: Record<MissionClaimStatus, string> = {
   pending: 'Pendiente de pago',
+  processing: 'Procesando en el servidor',
   paid: 'Pagada',
   rejected: 'Rechazada',
 }
@@ -35,13 +37,25 @@ function getRoleLabel(roleId: string): string {
   return role ? `${role.emoji} ${role.name} (${role.id})` : roleId
 }
 
-function ClaimStatusBadge({ status }: { status: MissionClaimStatus }) {
+function getClaimStatusLabel(claim: MissionClaimRow): string {
+  if (isMissionClaimRevoked(claim)) return 'Revocada'
+  return statusLabels[claim.status]
+}
+
+function ClaimStatusBadge({ claim }: { claim: MissionClaimRow }) {
+  const { status } = claim
   const styles = {
     pending: {
       borderColor: 'var(--gold)',
       background: 'rgba(255,170,0,0.14)',
       color: 'var(--gold-bright)',
       icon: <Clock className="h-4 w-4" />,
+    },
+    processing: {
+      borderColor: 'var(--gold)',
+      background: 'rgba(255,170,0,0.2)',
+      color: 'var(--gold-bright)',
+      icon: <RefreshCw className="h-4 w-4 animate-spin" />,
     },
     paid: {
       borderColor: 'var(--grass)',
@@ -67,7 +81,7 @@ function ClaimStatusBadge({ status }: { status: MissionClaimStatus }) {
       }}
     >
       {styles.icon}
-      {statusLabels[status]}
+      {getClaimStatusLabel(claim)}
     </span>
   )
 }
@@ -107,6 +121,16 @@ function PaidDetails({ claim }: { claim: MissionClaimRow }) {
     <span className="mt-1 block text-xs" style={{ color: 'var(--text-muted)' }}>
       {formatClaimDate(claim.paid_at)}
       {claim.paid_by ? ` · por ${claim.paid_by}` : ''}
+    </span>
+  )
+}
+
+function RejectionDetails({ claim }: { claim: MissionClaimRow }) {
+  if (claim.status !== 'rejected' || !claim.last_error) return null
+
+  return (
+    <span className="mt-1 block text-xs" style={{ color: 'var(--text-muted)' }}>
+      {claim.last_error}
     </span>
   )
 }
@@ -161,8 +185,9 @@ function ClaimsTable({
                 {formatClaimDate(claim.created_at)}
               </td>
               <td className="border-b-2 px-4 py-3" style={{ borderColor: 'var(--line)' }}>
-                <ClaimStatusBadge status={claim.status} />
+                <ClaimStatusBadge claim={claim} />
                 <PaidDetails claim={claim} />
+                <RejectionDetails claim={claim} />
               </td>
               <td className="border-b-2 px-4 py-3" style={{ borderColor: 'var(--line)' }}>
                 <PaymentAction
@@ -202,7 +227,7 @@ function ClaimCards({
                 {getRoleLabel(claim.role_id)} · Día {claim.day}
               </p>
             </div>
-            <ClaimStatusBadge status={claim.status} />
+            <ClaimStatusBadge claim={claim} />
           </div>
 
           <div className="mt-3 grid gap-2 border-t-2 pt-3 sm:grid-cols-2" style={{ borderColor: 'var(--line)' }}>
@@ -216,6 +241,7 @@ function ClaimCards({
               <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>Creado</p>
               <p className="m-0" style={{ color: 'var(--text)' }}>{formatClaimDate(claim.created_at)}</p>
               <PaidDetails claim={claim} />
+              <RejectionDetails claim={claim} />
             </div>
           </div>
 

@@ -1,18 +1,5 @@
 {
   "buildCommand": "pnpm run build",
-  "outputDirectory": "dist/client",
   "installCommand": "pnpm install --frozen-lockfile",
-  "framework": null,
-  "functions": {
-    "api/index.js": {
-      "runtime": "nodejs22.x",
-      "includeFiles": "dist/**"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/api/index"
-    }
-  ]
+  "framework": null
 }

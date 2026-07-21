@@ -48,6 +48,20 @@ export default function Header() {
           >
             Misiones
           </Link>
+          <Link
+            to="/scoreboard"
+            className="nav-link"
+            activeProps={{ className: 'nav-link is-active' }}
+          >
+            Ranking
+          </Link>
+          <Link
+            to="/claims"
+            className="nav-link"
+            activeProps={{ className: 'nav-link is-active' }}
+          >
+            Reclamos
+          </Link>
         </div>
 
         {/* Right side */}

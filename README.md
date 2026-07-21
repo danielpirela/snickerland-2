@@ -5,9 +5,33 @@ Welcome to your new TanStack Start app!
 To run this application:
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
+
+## Supabase Progress Sync
+
+The app keeps progress in localStorage first and synchronizes it with Supabase when the public client variables are configured. Copy `.env.example` to `.env.local` and fill in the values from the Supabase project settings:
+
+```bash
+cp .env.example .env.local
+```
+
+Required local variables:
+
+```text
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
+```
+
+`.env.local` is ignored by Git. Never commit these values or use a `service_role` key in browser code.
+
+For Vercel, add the same variables in the project Environment Variables settings for every environment that should use the global ranking:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+The global ranking intentionally uses username-only access for now. A player can impersonate another username; real anti-cheat identity requires Supabase Auth or server-side Minecraft verification.
 
 # Building For Production
 

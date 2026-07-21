@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as ClaimsRouteImport } from './routes/claims'
+import { Route as ScoreboardRouteImport } from './routes/scoreboard'
 import { Route as RoleRoleIdRouteImport } from './routes/role.$roleId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +25,16 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClaimsRoute = ClaimsRouteImport.update({
+  id: '/claims',
+  path: '/claims',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScoreboardRoute = ScoreboardRouteImport.update({
+  id: '/scoreboard',
+  path: '/scoreboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoleRoleIdRoute = RoleRoleIdRouteImport.update({
   id: '/role/$roleId',
   path: '/role/$roleId',
@@ -32,30 +44,38 @@ const RoleRoleIdRoute = RoleRoleIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/claims': typeof ClaimsRoute
+  '/scoreboard': typeof ScoreboardRoute
   '/role/$roleId': typeof RoleRoleIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/claims': typeof ClaimsRoute
+  '/scoreboard': typeof ScoreboardRoute
   '/role/$roleId': typeof RoleRoleIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/claims': typeof ClaimsRoute
+  '/scoreboard': typeof ScoreboardRoute
   '/role/$roleId': typeof RoleRoleIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/role/$roleId'
+  fullPaths: '/' | '/about' | '/claims' | '/scoreboard' | '/role/$roleId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/role/$roleId'
-  id: '__root__' | '/' | '/about' | '/role/$roleId'
+  to: '/' | '/about' | '/claims' | '/scoreboard' | '/role/$roleId'
+  id: '__root__' | '/' | '/about' | '/claims' | '/scoreboard' | '/role/$roleId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  ClaimsRoute: typeof ClaimsRoute
+  ScoreboardRoute: typeof ScoreboardRoute
   RoleRoleIdRoute: typeof RoleRoleIdRoute
 }
 
@@ -75,6 +95,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/claims': {
+      id: '/claims'
+      path: '/claims'
+      fullPath: '/claims'
+      preLoaderRoute: typeof ClaimsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scoreboard': {
+      id: '/scoreboard'
+      path: '/scoreboard'
+      fullPath: '/scoreboard'
+      preLoaderRoute: typeof ScoreboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/role/$roleId': {
       id: '/role/$roleId'
       path: '/role/$roleId'
@@ -88,6 +122,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  ClaimsRoute: ClaimsRoute,
+  ScoreboardRoute: ScoreboardRoute,
   RoleRoleIdRoute: RoleRoleIdRoute,
 }
 export const routeTree = rootRouteImport

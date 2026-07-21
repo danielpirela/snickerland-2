@@ -2,8 +2,12 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useMemo } from 'react'
 import { useAuth } from '#/contexts/AuthContext'
 import { useQuestProgress } from '#/hooks/useQuestProgress'
+import { useMissionClaims } from '#/hooks/useMissionClaims'
 import { getUserRoles } from '#/data/users'
 import { getRoleById, getWeekDay, type DayQuest } from '#/data/quests'
+import MissionClaimControl from '#/components/MissionClaimControl'
+import MissionClaimsNotice from '#/components/MissionClaimsNotice'
+import type { MissionClaimRow } from '#/lib/supabase'
 import { Coins, LogOut, ChevronDown, Trophy, Calendar, CheckCircle2, Check } from 'lucide-react'
 
 export const Route = createFileRoute('/')({ component: Home })
@@ -76,6 +80,13 @@ function LoginScreen() {
 function Dashboard() {
   const { username, logout } = useAuth()
   const { isTaskCompleted, toggleTask, areAllTasksCompleted } = useQuestProgress()
+  const {
+    claimDay,
+    error: claimsError,
+    getClaim,
+    isLoading: claimsLoading,
+    pendingAction,
+  } = useMissionClaims()
 
   const userRoles = useMemo(() => {
     if (!username) return []
@@ -161,6 +172,8 @@ function Dashboard() {
           Salir
         </button>
       </div>
+
+      {claimsError && <MissionClaimsNotice message={claimsError} />}
 
       {/* XP Progress bar */}
       {quests.length > 0 && (
@@ -267,6 +280,10 @@ function Dashboard() {
               isTaskCompleted={isTaskCompleted}
               toggleTask={toggleTask}
               areAllTasksCompleted={areAllTasksCompleted}
+              claim={getClaim(q.roleId, q.day.day)}
+              claimsLoading={claimsLoading}
+              claimDay={claimDay}
+              claimPending={pendingAction === `claim:${q.roleId}:${q.day.day}`}
             />
           ))}
         </div>
@@ -321,6 +338,10 @@ function QuestCard({
   isTaskCompleted,
   toggleTask,
   areAllTasksCompleted,
+  claim,
+  claimsLoading,
+  claimDay,
+  claimPending,
 }: {
   roleId: string
   roleName: string
@@ -330,6 +351,10 @@ function QuestCard({
   isTaskCompleted: (roleId: string, day: number, taskIndex: number) => boolean
   toggleTask: (roleId: string, day: number, taskIndex: number) => void
   areAllTasksCompleted: (roleId: string, day: number, total: number) => boolean
+  claim: MissionClaimRow | null
+  claimsLoading: boolean
+  claimDay: (roleId: string, day: number) => Promise<MissionClaimRow | null>
+  claimPending: boolean
 }) {
   const [open, setOpen] = useState(false)
   const weekDay = getWeekDay(day.day)
@@ -429,6 +454,25 @@ function QuestCard({
           Ver todo
         </Link>
       </button>
+
+      {(allDone || claim) && (
+        <div className="border-t-2 px-4 py-3" style={{ borderColor: 'var(--line)' }}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
+              Estado del reclamo
+            </span>
+            <MissionClaimControl
+              allTasksCompleted={allDone}
+              claim={claim}
+              claimsLoading={claimsLoading}
+              claimPending={claimPending}
+              onClaim={() => {
+                void claimDay(roleId, day.day)
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Expandable tasks */}
       <div

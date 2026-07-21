@@ -17,6 +17,11 @@ const roleAssignments: UserMapping[] = [
   { username: 'BatDaddy', roles: [] },
 ];
 
+/** Returns every username known by the Snickerland 2 role mapping. */
+export function getKnownUsernames(): string[] {
+  return roleAssignments.map(({ username }) => username)
+}
+
 /**
  * Returns the roles assigned to a given username.
  * All users automatically receive "general" in addition to any specific roles.

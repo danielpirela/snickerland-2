@@ -2,6 +2,10 @@ import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getRoleById, getWeekDay, getWeekNumber } from '#/data/quests'
 import type { DayQuest, QuestTask } from '#/data/quests'
 import { useQuestProgress } from '#/hooks/useQuestProgress'
+import { useMissionClaims } from '#/hooks/useMissionClaims'
+import MissionClaimControl from '#/components/MissionClaimControl'
+import MissionClaimsNotice from '#/components/MissionClaimsNotice'
+import type { MissionClaimRow } from '#/lib/supabase'
 import { useState, useMemo } from 'react'
 import { ArrowLeft, Coins, ChevronDown, Trophy, Calendar, CheckCircle2, Check } from 'lucide-react'
 
@@ -158,6 +162,10 @@ function DayCard({
   isTaskCompleted,
   toggleTask,
   areAllTasksCompleted,
+  claim,
+  claimsLoading,
+  claimDay,
+  claimPending,
 }: {
   day: DayQuest
   color: string
@@ -165,6 +173,10 @@ function DayCard({
   isTaskCompleted: (roleId: string, day: number, taskIndex: number) => boolean
   toggleTask: (roleId: string, day: number, taskIndex: number) => void
   areAllTasksCompleted: (roleId: string, day: number, total: number) => boolean
+  claim: MissionClaimRow | null
+  claimsLoading: boolean
+  claimDay: (roleId: string, day: number) => Promise<MissionClaimRow | null>
+  claimPending: boolean
 }) {
   const [open, setOpen] = useState(false)
   const weekDay = getWeekDay(day.day)
@@ -236,6 +248,25 @@ function DayCard({
           />
         )}
       </button>
+
+      {(allDone || claim) && (
+        <div className="border-t-2 px-4 py-3" style={{ borderColor: 'var(--line)' }}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
+              Estado del reclamo
+            </span>
+            <MissionClaimControl
+              allTasksCompleted={allDone}
+              claim={claim}
+              claimsLoading={claimsLoading}
+              claimPending={claimPending}
+              onClaim={() => {
+                void claimDay(roleId, day.day)
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Expandable */}
       <div
@@ -318,6 +349,13 @@ function RoleDetail() {
   const { roleId } = Route.useParams()
   const role = getRoleById(roleId)
   const { isTaskCompleted, toggleTask, areAllTasksCompleted } = useQuestProgress()
+  const {
+    claimDay,
+    error: claimsError,
+    getClaim,
+    isLoading: claimsLoading,
+    pendingAction,
+  } = useMissionClaims()
 
   if (!role) {
     throw notFound()
@@ -473,6 +511,8 @@ function RoleDetail() {
         </div>
       </section>
 
+      {claimsError && <MissionClaimsNotice message={claimsError} />}
+
       {/* Filters row */}
       <div className="island-shell mb-4 flex flex-wrap items-center gap-4 p-4" style={{ borderRadius: 0 }}>
         <DayFilter
@@ -517,6 +557,10 @@ function RoleDetail() {
               isTaskCompleted={isTaskCompleted}
               toggleTask={toggleTask}
               areAllTasksCompleted={areAllTasksCompleted}
+              claim={getClaim(roleId, day.day)}
+              claimsLoading={claimsLoading}
+              claimDay={claimDay}
+              claimPending={pendingAction === `claim:${roleId}:${day.day}`}
             />
           ))
         )}

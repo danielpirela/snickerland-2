@@ -1,12 +1,17 @@
 import { Rcon } from 'rcon-client'
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || ''
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const RCON_HOST = process.env.RCON_HOST || ''
 const RCON_PORT = parseInt(process.env.RCON_PORT || '25575', 10)
 const RCON_PASSWORD = process.env.RCON_PASSWORD || ''
 const BRIDGE_TOKEN = process.env.CLAIM_BRIDGE_TOKEN || ''
 const BRIDGE_URL = `${SUPABASE_URL}/functions/v1/claim-bridge`
+
+interface PendingClaim {
+  id: string
+  username: string
+  reward_amount: number
+}
 
 async function pollClaims() {
   const res = await fetch(BRIDGE_URL, {
@@ -15,11 +20,11 @@ async function pollClaims() {
     body: JSON.stringify({ action: 'poll', server_id: 'snickerland-prod', limit: 5 }),
   })
   if (!res.ok) return []
-  const data = await res.json()
-  return data.claims || []
+  const data: any = await res.json()
+  return (data.claims || []) as PendingClaim[]
 }
 
-async function completeClaim(id) {
+async function completeClaim(id: string) {
   await fetch(BRIDGE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-bridge-token': BRIDGE_TOKEN },
@@ -27,7 +32,7 @@ async function completeClaim(id) {
   })
 }
 
-async function releaseClaim(id, message) {
+async function releaseClaim(id: string, message: string) {
   await fetch(BRIDGE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-bridge-token': BRIDGE_TOKEN },
@@ -35,25 +40,20 @@ async function releaseClaim(id, message) {
   })
 }
 
-export default async function handler(req, res) {
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET || 'snickerland-cron'}`) {
-    return res.status(401).json({ error: 'unauthorized' })
-  }
-
+export default defineEventHandler(async () => {
   if (!RCON_HOST || !RCON_PASSWORD) {
-    console.error('RCON not configured')
-    return res.status(500).json({ ok: false, error: 'RCON not configured' })
+    return { ok: false, error: 'RCON not configured' }
   }
 
   const claims = await pollClaims()
   if (claims.length === 0) {
-    return res.json({ ok: true, processed: 0 })
+    return { ok: true, processed: 0 }
   }
 
-  const results = []
+  const results: any[] = []
   for (const claim of claims) {
     if (!/^[A-Za-z0-9_]{1,16}$/.test(claim.username) || claim.reward_amount <= 0) {
-      await releaseClaim(claim.id, 'Invalid claim data')
+      await releaseClaim(claim.id, 'Invalid')
       results.push({ id: claim.id, status: 'released' })
       continue
     }
@@ -65,19 +65,16 @@ export default async function handler(req, res) {
         password: RCON_PASSWORD,
         timeout: 10000,
       })
-      const command = `eco add ${claim.username} ${claim.reward_amount}`
-      console.log(`RCON: ${command}`)
-      await rcon.send(command)
+      const cmd = `eco add ${claim.username} ${claim.reward_amount}`
+      await rcon.send(cmd)
       await rcon.end()
       await completeClaim(claim.id)
       results.push({ id: claim.id, status: 'paid' })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'RCON failed'
-      console.error(`RCON error:`, message)
-      await releaseClaim(claim.id, message.slice(0, 200))
-      results.push({ id: claim.id, status: 'released', error: message })
+    } catch (err: any) {
+      await releaseClaim(claim.id, err.message?.slice(0, 200) || 'RCON error')
+      results.push({ id: claim.id, status: 'released' })
     }
   }
 
-  return res.json({ ok: true, processed: results.length, results })
-}
+  return { ok: true, processed: results.length, results }
+})

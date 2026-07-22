@@ -62,6 +62,13 @@ export default function Header() {
           >
             Reclamos
           </Link>
+          <Link
+            to="/tools/youtube"
+            className="nav-link"
+            activeProps={{ className: 'nav-link is-active' }}
+          >
+            YT → URL
+          </Link>
         </div>
 
         {/* Right side */}

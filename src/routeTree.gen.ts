@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as ClaimsRouteImport } from './routes/claims'
 import { Route as ScoreboardRouteImport } from './routes/scoreboard'
 import { Route as RoleRoleIdRouteImport } from './routes/role.$roleId'
+import { Route as ToolsYoutubeRouteImport } from './routes/tools/youtube'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,11 @@ const RoleRoleIdRoute = RoleRoleIdRouteImport.update({
   path: '/role/$roleId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsYoutubeRoute = ToolsYoutubeRouteImport.update({
+  id: '/tools/youtube',
+  path: '/tools/youtube',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/claims': typeof ClaimsRoute
   '/scoreboard': typeof ScoreboardRoute
   '/role/$roleId': typeof RoleRoleIdRoute
+  '/tools/youtube': typeof ToolsYoutubeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/claims': typeof ClaimsRoute
   '/scoreboard': typeof ScoreboardRoute
   '/role/$roleId': typeof RoleRoleIdRoute
+  '/tools/youtube': typeof ToolsYoutubeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,33 @@ export interface FileRoutesById {
   '/claims': typeof ClaimsRoute
   '/scoreboard': typeof ScoreboardRoute
   '/role/$roleId': typeof RoleRoleIdRoute
+  '/tools/youtube': typeof ToolsYoutubeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/claims' | '/scoreboard' | '/role/$roleId'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/claims'
+    | '/scoreboard'
+    | '/role/$roleId'
+    | '/tools/youtube'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/claims' | '/scoreboard' | '/role/$roleId'
-  id: '__root__' | '/' | '/about' | '/claims' | '/scoreboard' | '/role/$roleId'
+  to:
+    | '/'
+    | '/about'
+    | '/claims'
+    | '/scoreboard'
+    | '/role/$roleId'
+    | '/tools/youtube'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/claims'
+    | '/scoreboard'
+    | '/role/$roleId'
+    | '/tools/youtube'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +105,7 @@ export interface RootRouteChildren {
   ClaimsRoute: typeof ClaimsRoute
   ScoreboardRoute: typeof ScoreboardRoute
   RoleRoleIdRoute: typeof RoleRoleIdRoute
+  ToolsYoutubeRoute: typeof ToolsYoutubeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RoleRoleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/youtube': {
+      id: '/tools/youtube'
+      path: '/tools/youtube'
+      fullPath: '/tools/youtube'
+      preLoaderRoute: typeof ToolsYoutubeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClaimsRoute: ClaimsRoute,
   ScoreboardRoute: ScoreboardRoute,
   RoleRoleIdRoute: RoleRoleIdRoute,
+  ToolsYoutubeRoute: ToolsYoutubeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

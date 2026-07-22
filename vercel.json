@@ -1,5 +1,11 @@
 {
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install --frozen-lockfile",
-  "framework": null
+  "framework": null,
+  "crons": [
+    {
+      "path": "/api/rcon-poll",
+      "schedule": "*/1 * * * *"
+    }
+  ]
 }

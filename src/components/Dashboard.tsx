@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react'
 import { useAuth } from '#/contexts/AuthContext'
 import { useQuestProgress } from '#/hooks/useQuestProgress'
 import { useMissionClaims } from '#/hooks/useMissionClaims'
+import { useQuestData } from '#/hooks/useQuestData'
 import { getUserRoles } from '#/data/users'
-import { getRoleById, type DayQuest } from '#/data/quests'
+import type { DayQuest } from '#/data/quests'
 import MissionClaimsNotice from '#/components/MissionClaimsNotice'
 import { LogOut, Trophy, Calendar } from 'lucide-react'
 import { RolePill } from '#/components/RolePill'
@@ -11,6 +12,7 @@ import { QuestCard } from '#/components/QuestCard'
 
 export function Dashboard() {
   const { username, logout } = useAuth()
+  const { getRoleById } = useQuestData()
   const { isTaskCompleted, toggleTask, areAllTasksCompleted } = useQuestProgress()
   const {
     claimDay,

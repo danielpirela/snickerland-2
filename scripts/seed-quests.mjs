@@ -69,13 +69,34 @@ async function loadRoles() {
   const source = readFileSync(questsPath, 'utf-8')
 
   // Extract the JSON-like array after `export const roles: Role[] = `
-  const match = source.match(/export const roles: Role\[\]\s*=\s*(\[[\s\S]*\]);?/)
-  if (!match) {
+  // Use a non-greedy match to avoid capturing subsequent exports
+  const startIdx = source.indexOf('export const roles: Role[] = [')
+  if (startIdx === -1) {
     throw new Error('Could not find `export const roles` in quests.ts')
   }
+  
+  // Find the matching closing bracket by counting nesting
+  let depth = 0
+  let endIdx = -1
+  for (let i = startIdx + 'export const roles: Role[] = '.length; i < source.length; i++) {
+    if (source[i] === '[') depth++
+    else if (source[i] === ']') {
+      depth--
+      if (depth === 0) { endIdx = i + 1; break }
+    }
+  }
+  
+  if (endIdx === -1) {
+    throw new Error('Could not find closing bracket of roles array')
+  }
+  
+  const arraySource = source.slice(
+    startIdx + 'export const roles: Role[] = '.length,
+    endIdx
+  )
 
   // Use eval in a controlled way — the file is auto-generated and trusted
-  const roles = eval(`(${match[1]})`)
+  const roles = eval(`(${arraySource})`)
   return /** @type {import('../src/data/quests').Role[]} */ (roles)
 }
 
@@ -96,6 +117,7 @@ async function main() {
     totalRoles++
 
     if (!validateOnly) {
+      process.stdout.write(`\r  Seeding ${role.emoji} ${role.name}...`)
       const { error: roleError } = await supabase
         .from('roles')
         .upsert({
@@ -182,7 +204,7 @@ async function main() {
     }
   }
 
-  console.log('\n--- Seed Summary ---')
+  console.log('\r\x1b[K--- Seed Summary ---')
   console.log(`Roles:   ${totalRoles}`)
   console.log(`Days:    ${totalDays}`)
   console.log(`Tasks:   ${totalTasks}`)

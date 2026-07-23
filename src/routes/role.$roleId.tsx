@@ -15,7 +15,7 @@ export const Route = createFileRoute('/role/$roleId')({ component: RoleDetail })
 
 function RoleDetail() {
   const { roleId } = Route.useParams()
-  const { getRoleById } = useQuestData()
+  const { getRoleById } = useQuestData([roleId])
   const role = getRoleById(roleId)
   const { isTaskCompleted, toggleTask, areAllTasksCompleted } = useQuestProgress()
   const {

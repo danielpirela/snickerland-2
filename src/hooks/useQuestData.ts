@@ -45,21 +45,19 @@ export interface UseQuestDataResult {
   /** Retry fetching quest data. */
   retry: () => void
 }
-
-const ALL_ROLE_IDS = ['agricultor', 'alquimista', 'arquitecto', 'cocinero',
-  'explorador', 'ganadero', 'general', 'herrero', 'ingeniero', 'lenador',
-  'mecanico', 'minero', 'pescador', 'tabernero']
-
 /**
  * Hook that loads quest definitions.
  *
- * When Supabase is configured, it fetches the full quest tree via
- * the server function on mount. Otherwise it falls back to the
- * static quests.ts import immediately.
+ * When Supabase is configured, it fetches the quest tree for the given
+ * role IDs via the server function on mount. Otherwise it falls back to
+ * the static quests.ts import immediately.
+ *
+ * @param roleIds - The role IDs to load quests for. Defaults to none
+ *   (will use static fallback). Pass user roles to load from Supabase.
  */
-export function useQuestData(): UseQuestDataResult {
+export function useQuestData(roleIds: string[] = []): UseQuestDataResult {
   const [questTree, setQuestTree] = useState<QuestRole[] | null>(null)
-  const [isLoading, setIsLoading] = useState(isSupabaseConfigured)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mountedRef = useRef(true)
   const retryKey = useRef(0)
@@ -73,16 +71,21 @@ export function useQuestData(): UseQuestDataResult {
   useEffect(() => {
     mountedRef.current = true
 
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || roleIds.length === 0) {
       setIsLoading(false)
       return () => { mountedRef.current = false }
     }
 
+    setIsLoading(true)
     let cancelled = false
 
-    loadQuests({ data: ALL_ROLE_IDS }).then((result: unknown) => {
+    loadQuests({ data: roleIds }).then((result: unknown) => {
       if (cancelled || !mountedRef.current) return
-      setQuestTree(result as QuestRole[])
+      const tree = result as QuestRole[]
+      // Only accept Supabase data if we got at least the expected roles back
+      if (tree.length >= roleIds.length) {
+        setQuestTree(tree)
+      }
       setError(null)
     }).catch((err: unknown) => {
       if (cancelled || !mountedRef.current) return
@@ -95,7 +98,7 @@ export function useQuestData(): UseQuestDataResult {
       mountedRef.current = false
       cancelled = true
     }
-  }, [retryKey.current])
+  }, [roleIds.join(','), retryKey.current])
 
   const getRoleByIdMemo = useMemo(() => {
     const serverMap = new Map<string, QuestRole>()

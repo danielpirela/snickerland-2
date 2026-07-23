@@ -12,7 +12,11 @@ import { QuestCard } from '#/components/QuestCard'
 
 export function Dashboard() {
   const { username, logout } = useAuth()
-  const { getRoleById } = useQuestData()
+  const userRoles = useMemo(() => {
+    if (!username) return []
+    return getUserRoles(username)
+  }, [username])
+  const { getRoleById } = useQuestData(userRoles)
   const { isTaskCompleted, toggleTask, areAllTasksCompleted } = useQuestProgress()
   const {
     claimDay,
@@ -21,11 +25,6 @@ export function Dashboard() {
     isLoading: claimsLoading,
     pendingAction,
   } = useMissionClaims()
-
-  const userRoles = useMemo(() => {
-    if (!username) return []
-    return getUserRoles(username)
-  }, [username])
 
   // Filter state
   const [activeRole, setActiveRole] = useState<string>('Todos')

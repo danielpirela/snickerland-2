@@ -2,9 +2,8 @@ import { useState, useMemo } from 'react'
 import { useAuth } from '#/contexts/AuthContext'
 import { useQuestProgress } from '#/hooks/useQuestProgress'
 import { useMissionClaims } from '#/hooks/useMissionClaims'
-import { useQuestData } from '#/hooks/useQuestData'
 import { getUserRoles } from '#/data/users'
-import type { DayQuest } from '#/data/quests'
+import { getRoleById, type DayQuest } from '#/data/quests'
 import MissionClaimsNotice from '#/components/MissionClaimsNotice'
 import { LogOut, Trophy, Calendar } from 'lucide-react'
 import { RolePill } from '#/components/RolePill'
@@ -16,7 +15,6 @@ export function Dashboard() {
     if (!username) return []
     return getUserRoles(username)
   }, [username])
-  const { getRoleById } = useQuestData(userRoles)
   const { isTaskCompleted, toggleTask, areAllTasksCompleted } = useQuestProgress()
   const {
     claimDay,

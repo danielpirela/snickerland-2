@@ -1,9 +1,8 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
-import { getWeekNumber } from '#/data/quests'
+import { getRoleById, getWeekNumber } from '#/data/quests'
 import type { DayQuest } from '#/data/quests'
 import { useQuestProgress } from '#/hooks/useQuestProgress'
 import { useMissionClaims } from '#/hooks/useMissionClaims'
-import { useQuestData } from '#/hooks/useQuestData'
 import MissionClaimsNotice from '#/components/MissionClaimsNotice'
 import { useState, useMemo } from 'react'
 import { ArrowLeft } from 'lucide-react'
@@ -15,7 +14,6 @@ export const Route = createFileRoute('/role/$roleId')({ component: RoleDetail })
 
 function RoleDetail() {
   const { roleId } = Route.useParams()
-  const { getRoleById } = useQuestData([roleId])
   const role = getRoleById(roleId)
   const { isTaskCompleted, toggleTask, areAllTasksCompleted } = useQuestProgress()
   const {

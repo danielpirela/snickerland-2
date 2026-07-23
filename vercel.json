@@ -2,10 +2,5 @@
   "buildCommand": "bash scripts/vercel-build.sh",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
-  "crons": [
-    {
-      "path": "/api/rcon-poll",
-      "schedule": "*/30 * * * *"
-    }
-  ]
+  "crons": []
 }

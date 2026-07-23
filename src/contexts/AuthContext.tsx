@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { migrateProgress } from '#/lib/migration'
 
 const STORAGE_KEY = 'snickerland-username'
 
@@ -23,6 +24,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!trimmed) return
     window.localStorage.setItem(STORAGE_KEY, trimmed)
     setUsername(trimmed)
+    // Fire-and-forget: migrate localStorage progress to Supabase
+    void migrateProgress(trimmed).catch(() => {
+      // Silent failure — retry on next login
+    })
   }, [])
 
   const logout = useCallback(() => {

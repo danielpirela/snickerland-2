@@ -1,5 +1,5 @@
 {
-  "buildCommand": "mkdir -p bin && curl -fSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o bin/yt-dlp && chmod +x bin/yt-dlp && pnpm run build && mkdir -p .vercel/output/functions/__server.func/bin && cp bin/yt-dlp .vercel/output/functions/__server.func/bin/yt-dlp",
+  "buildCommand": "bash scripts/vercel-build.sh",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
   "crons": [

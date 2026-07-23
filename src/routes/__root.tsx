@@ -4,6 +4,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { AuthProvider } from '../contexts/AuthContext'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import '#/i18n/index'
 
 import appCss from '../styles.css?url'
 

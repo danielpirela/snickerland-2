@@ -60,6 +60,30 @@ export type Database = {
         Update: MissionClaimUpdate
         Relationships: []
       }
+      roles: {
+        Row: { id: string; name: string; emoji: string; color: string }
+        Insert: { id: string; name: string; emoji?: string; color?: string }
+        Update: Partial<{ name: string; emoji: string; color: string }>
+        Relationships: []
+      }
+      days: {
+        Row: { id: string; role_id: string; day: number; title: string }
+        Insert: { role_id: string; day: number; title: string; id?: string }
+        Update: Partial<{ title: string; day: number }>
+        Relationships: []
+      }
+      tasks: {
+        Row: { id: string; day_id: string; task_index: number; title: string; amount: number }
+        Insert: { day_id: string; task_index: number; title: string; amount?: number; id?: string }
+        Update: Partial<{ title: string; amount: number }>
+        Relationships: []
+      }
+      rewards: {
+        Row: { id: string; role_id: string; day_id: string; amount: number; title: string }
+        Insert: { role_id: string; day_id: string; amount: number; title: string; id?: string }
+        Update: Partial<{ amount: number; title: string }>
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: { [_ in never]: never }
@@ -88,3 +112,45 @@ export const supabase: SupabaseClient<Database> | null = isSupabaseConfigured
 
 export const MISSION_PROGRESS_PAGE_SIZE = 1000
 export const MISSION_PROGRESS_UPDATED_EVENT = 'snickerland:mission-progress-updated'
+
+// ---------- Quest Definition Types (Phase 2: Server-Side Quest Loading) ----------
+
+/** A single task row from the tasks table. */
+export interface QuestTask {
+  id: string
+  day_id: string
+  task_index: number
+  title: string
+  amount: number
+}
+
+/** A single reward row from the rewards table. */
+export interface QuestReward {
+  id: string
+  role_id: string
+  day_id: string
+  amount: number
+  title: string
+}
+
+/** A day row with nested tasks and rewards (from Supabase JOIN). */
+export interface QuestDay {
+  id: string
+  role_id: string
+  day: number
+  title: string
+  tasks: QuestTask[]
+  rewards: QuestReward[]
+}
+
+/** A role row with nested days (from Supabase JOIN). */
+export interface QuestRole {
+  id: string
+  name: string
+  emoji: string
+  color: string
+  days: QuestDay[]
+}
+
+/** The full quest tree returned by the server function. */
+export type QuestTree = QuestRole[]

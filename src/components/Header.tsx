@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { useAuth } from '#/contexts/AuthContext'
 import { LogOut } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 export default function Header() {
   const { username, logout } = useAuth()
@@ -73,6 +74,7 @@ export default function Header() {
 
         {/* Right side */}
         <div className="ml-auto flex items-center gap-2">
+          <LanguageSwitcher />
           {username && (
             <div className="flex items-center gap-2">
               <span

@@ -1,6 +1,50 @@
-import { CheckCircle2, Clock, Coins, RefreshCw, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock, Coins, RefreshCw, XCircle, Timer } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { isMissionClaimRevoked } from '#/lib/missionClaims'
 import type { MissionClaimRow } from '#/lib/supabase'
+
+/** Cron runs at :00 and :30 of every hour. Returns minutes until next batch. */
+function getMinutesUntilNextCron(): number {
+  const now = new Date()
+  const minutes = now.getMinutes()
+  const seconds = now.getSeconds()
+  const nextBatchMinute = minutes < 30 ? 30 : 60
+  const minutesUntil = nextBatchMinute - minutes - (seconds > 0 ? 1 : 0)
+  return Math.max(0, minutesUntil)
+}
+
+// Singleton interval — all instances share one timer
+let _countdownSubs = 0
+let _countdownInterval: ReturnType<typeof setInterval> | null = null
+const _countdownListeners = new Set<() => void>()
+
+function useCountdown(): number {
+  const [remaining, setRemaining] = useState(getMinutesUntilNextCron)
+
+  useEffect(() => {
+    const tick = () => setRemaining(getMinutesUntilNextCron())
+    _countdownListeners.add(tick)
+    _countdownSubs++
+
+    if (_countdownInterval === null) {
+      _countdownInterval = setInterval(() => {
+        for (const fn of _countdownListeners) fn()
+      }, 30_000)
+    }
+
+    return () => {
+      _countdownListeners.delete(tick)
+      _countdownSubs--
+      if (_countdownSubs <= 0 && _countdownInterval !== null) {
+        clearInterval(_countdownInterval)
+        _countdownInterval = null
+        _countdownSubs = 0
+      }
+    }
+  }, [])
+
+  return remaining
+}
 
 interface MissionClaimControlProps {
   allTasksCompleted: boolean
@@ -17,6 +61,7 @@ export default function MissionClaimControl({
   claimPending,
   onClaim,
 }: MissionClaimControlProps) {
+  const countdown = useCountdown()
   if (claim?.status === 'paid') {
     return (
       <span
@@ -35,17 +80,36 @@ export default function MissionClaimControl({
 
   if (claim?.status === 'pending') {
     return (
-      <span
-        className="inline-flex items-center gap-1.5 border-2 px-3 py-2 text-sm font-bold"
-        style={{
-          borderColor: 'var(--gold)',
-          background: 'rgba(255,170,0,0.14)',
-          color: 'var(--gold-bright)',
-        }}
-      >
-        <Clock className="h-4 w-4" />
-        Pendiente de pago
-      </span>
+      <div className="flex flex-col gap-1">
+        <span
+          className="inline-flex items-center gap-1.5 border-2 px-3 py-2 text-sm font-bold"
+          style={{
+            borderColor: 'var(--gold)',
+            background: 'rgba(255,170,0,0.14)',
+            color: 'var(--gold-bright)',
+          }}
+        >
+          <Clock className="h-4 w-4" />
+          Pendiente de pago
+        </span>
+        {countdown > 0 ? (
+          <span
+            className="inline-flex items-center gap-1 text-xs"
+            style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}
+          >
+            <Timer className="h-3 w-3" />
+            Pago en ~{countdown} min
+          </span>
+        ) : (
+          <span
+            className="inline-flex items-center gap-1 text-xs"
+            style={{ color: 'var(--grass-light)', fontFamily: 'var(--font-sans)' }}
+          >
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Llegando...
+          </span>
+        )}
+      </div>
     )
   }
 

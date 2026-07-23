@@ -5,7 +5,7 @@
   "crons": [
     {
       "path": "/api/rcon-poll",
-      "schedule": "*/1 * * * *"
+      "schedule": "*/30 * * * *"
     }
   ]
 }

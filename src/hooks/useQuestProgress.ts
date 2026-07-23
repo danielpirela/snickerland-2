@@ -412,7 +412,7 @@ export function useQuestProgress() {
               const { error } = await client
                 .from('mission_progress')
                 .delete()
-                .eq('username', username)
+      .ilike('username', username)
                 .eq('role_id', roleId)
                 .eq('day', day)
                 .eq('task_index', taskIndex)

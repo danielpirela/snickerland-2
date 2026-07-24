@@ -60,7 +60,7 @@ async function runYtDlp(url: string, cookies?: string): Promise<any> {
   }
 
   try {
-  // Try "best" combined format first; fall back to default if unavailable
+  // Try different format strategies for Vercel compatibility
   let stdout: string
   try {
     const result = await execFileAsync(bin, [...args, '-f', 'best', url], {
@@ -68,11 +68,24 @@ async function runYtDlp(url: string, cookies?: string): Promise<any> {
     })
     stdout = result.stdout
   } catch {
-    // "best" might not be available — retry without format filter
-    const result = await execFileAsync(bin, args.concat(url), {
-      timeout: 45000, maxBuffer: 5 * 1024 * 1024,
-    })
-    stdout = result.stdout
+    // "best" not available — try default format
+    try {
+      const result = await execFileAsync(bin, args.concat(url), {
+        timeout: 45000, maxBuffer: 5 * 1024 * 1024,
+      })
+      stdout = result.stdout
+    } catch {
+      // Last resort: use Android client + mobile user agent
+      const result = await execFileAsync(bin, [
+        ...args,
+        '--extractor-args', 'youtube:player_client=android,ios',
+        '--user-agent', 'com.google.android.youtube/19.29.37 (Linux; U; Android 14; US) gzip',
+        url,
+      ], {
+        timeout: 45000, maxBuffer: 5 * 1024 * 1024,
+      })
+      stdout = result.stdout
+    }
   }
 
     let info: any

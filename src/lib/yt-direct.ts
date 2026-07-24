@@ -1,6 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve, join } from 'node:path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const execFileAsync = promisify(execFile)
 
@@ -12,26 +17,29 @@ function extractVideoId(input: string): string | null {
 }
 
 async function findYtDlp(): Promise<string> {
-  // Local dev: try system yt-dlp first
-  try {
-    await execFileAsync('yt-dlp', ['--version'], { timeout: 5000 })
-    return 'yt-dlp'
-  } catch {
-    // Vercel: use bundled binary
+  const candidates = [
+    // Vercel / serverless — binary bundled with serverAssets
+    () => resolve(process.cwd(), 'bin', 'yt-dlp'),
+    () => join(__dirname, '..', '..', 'bin', 'yt-dlp'),
+    // Relative to module
+    () => './bin/yt-dlp',
+    // Local dev — system yt-dlp
+    () => 'yt-dlp',
+    // macOS local
+    () => '/opt/homebrew/bin/yt-dlp',
+    () => '/usr/local/bin/yt-dlp',
+  ]
+
+  for (const getPath of candidates) {
+    const bin = getPath()
     try {
-      const bundled = './bin/yt-dlp'
-      await execFileAsync(bundled, ['--version'], { timeout: 5000 })
-      return bundled
+      await execFileAsync(bin, ['--version'], { timeout: 8000 })
+      return bin
     } catch {
-      // macOS local: try common paths
-      for (const p of ['/opt/homebrew/bin/yt-dlp', '/usr/local/bin/yt-dlp']) {
-        try {
-          await execFileAsync(p, ['--version'], { timeout: 5000 })
-          return p
-        } catch { /* continue */ }
-      }
+      continue
     }
   }
+
   throw new Error('yt-dlp not found')
 }
 

@@ -21,3 +21,13 @@ fi
 echo "→ Building…"
 pnpm run build
 echo "✓ Build complete"
+
+# ── Ensure yt-dlp is in the server function output ──────────────────────────
+# Nitro serverAssets should handle this, but copy as fallback for Vercel
+FUNC_OUTPUT=".vercel/output/functions/__server.func/bin"
+if [ -d ".vercel/output/functions/__server.func" ]; then
+  mkdir -p "$FUNC_OUTPUT"
+  cp "$YT_DLP_BIN" "$FUNC_OUTPUT/yt-dlp"
+  chmod +x "$FUNC_OUTPUT/yt-dlp"
+  echo "✓ yt-dlp copied to $FUNC_OUTPUT"
+fi

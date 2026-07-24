@@ -1,7 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import { writeFile, unlink } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 
 const execFileAsync = promisify(execFile)
 
@@ -37,23 +40,41 @@ async function runYtDlp(url: string, cookies?: string): Promise<any> {
   const bin = await findYtDlp()
   const args = ['-f', 'best', '--no-warnings', '--dump-json']
 
-  // Pass cookies via header (more reliable than --cookies for simple strings)
+  // yt-dlp requires Netscape-format cookies file (rejects --add-header)
+  let cookieFile: string | undefined
   if (cookies) {
-    args.push('--add-header', `Cookie: ${cookies}`)
+    cookieFile = join(tmpdir(), `yt-${randomUUID()}.txt`)
+    // If cookies are in HTTP header format, convert to Netscape format
+    const netscapeCookies = cookies.includes('\t') 
+      ? cookies 
+      : cookies.split(';').map(c => c.trim()).filter(Boolean)
+          .map(c => {
+            const [name, ...value] = c.split('=')
+            return `.youtube.com\tTRUE\t/\tTRUE\t0\t${name}\t${value.join('=')}`
+          }).join('\n')
+    
+    await writeFile(cookieFile, 
+      '# Netscape HTTP Cookie File\n' + netscapeCookies + '\n', 
+      'utf-8')
+    args.push('--cookies', cookieFile)
   }
 
-  const { stdout } = await execFileAsync(bin, args.concat(url), {
-    timeout: 45000,
-    maxBuffer: 5 * 1024 * 1024,
-  })
+  try {
+    const { stdout } = await execFileAsync(bin, args.concat(url), {
+      timeout: 45000,
+      maxBuffer: 5 * 1024 * 1024,
+    })
 
-  let info: any
-  try { info = JSON.parse(stdout.trim()) } catch {
-    throw new Error('Failed to parse video info')
+    let info: any
+    try { info = JSON.parse(stdout.trim()) } catch {
+      throw new Error('Failed to parse video info')
+    }
+
+    if (!info?.title) throw new Error('Could not extract video data')
+    return info
+  } finally {
+    if (cookieFile) await unlink(cookieFile).catch(() => {})
   }
-
-  if (!info?.title) throw new Error('Could not extract video data')
-  return info
 }
 
 export const getYtDirectUrl = createServerFn({ method: 'GET' })

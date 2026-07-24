@@ -17,7 +17,25 @@ export const getYtDirectUrl = createServerFn({ method: 'GET' })
     return trimmed
   })
   .handler(async ({ data: url }) => {
-    const info = await ytdl.getInfo(url)
+    // YouTube bot detection workaround: pass cookies if configured
+    const cookieHeader = process.env.YT_COOKIES?.trim()
+
+    const info = await ytdl.getInfo(url, {
+      ...(cookieHeader ? {
+        requestOptions: {
+          headers: {
+            cookie: cookieHeader,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+          },
+        },
+      } : {
+        requestOptions: {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+          },
+        },
+      }),
+    })
 
     // Pick best format with both video and audio (no separate streams)
     const formats = info.formats.filter(

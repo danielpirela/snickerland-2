@@ -38,10 +38,7 @@ async function findYtDlp(): Promise<string> {
 
 async function runYtDlp(url: string, cookies?: string): Promise<any> {
   const bin = await findYtDlp()
-  const args = [
-    '--no-warnings', '--dump-json',
-    '-f', 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/bestvideo+bestaudio/best/bestvideo',
-  ]
+  const args = ['--no-warnings', '--dump-json']
 
   // yt-dlp requires Netscape-format cookies file (rejects --add-header)
   let cookieFile: string | undefined
@@ -63,10 +60,20 @@ async function runYtDlp(url: string, cookies?: string): Promise<any> {
   }
 
   try {
-    const { stdout } = await execFileAsync(bin, args.concat(url), {
-      timeout: 45000,
-      maxBuffer: 5 * 1024 * 1024,
+  // Try "best" combined format first; fall back to default if unavailable
+  let stdout: string
+  try {
+    const result = await execFileAsync(bin, [...args, '-f', 'best', url], {
+      timeout: 45000, maxBuffer: 5 * 1024 * 1024,
     })
+    stdout = result.stdout
+  } catch {
+    // "best" might not be available — retry without format filter
+    const result = await execFileAsync(bin, args.concat(url), {
+      timeout: 45000, maxBuffer: 5 * 1024 * 1024,
+    })
+    stdout = result.stdout
+  }
 
     let info: any
     try { info = JSON.parse(stdout.trim()) } catch {

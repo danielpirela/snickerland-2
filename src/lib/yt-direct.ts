@@ -38,7 +38,10 @@ async function findYtDlp(): Promise<string> {
 
 async function runYtDlp(url: string, cookies?: string): Promise<any> {
   const bin = await findYtDlp()
-  const args = ['-f', 'best', '--no-warnings', '--dump-json']
+  const args = [
+    '--no-warnings', '--dump-json',
+    '-f', 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/bestvideo+bestaudio/best/bestvideo',
+  ]
 
   // yt-dlp requires Netscape-format cookies file (rejects --add-header)
   let cookieFile: string | undefined

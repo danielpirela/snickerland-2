@@ -38,13 +38,11 @@ async function findYtDlp(): Promise<string> {
 
 async function runYtDlp(url: string, cookies?: string): Promise<any> {
   const bin = await findYtDlp()
-  const args = ['--no-warnings', '--dump-json']
 
   // yt-dlp requires Netscape-format cookies file (rejects --add-header)
   let cookieFile: string | undefined
   if (cookies) {
     cookieFile = join(tmpdir(), `yt-${randomUUID()}.txt`)
-    // If cookies are in HTTP header format, convert to Netscape format
     const netscapeCookies = cookies.includes('\t') 
       ? cookies 
       : cookies.split(';').map(c => c.trim()).filter(Boolean)
@@ -56,45 +54,40 @@ async function runYtDlp(url: string, cookies?: string): Promise<any> {
     await writeFile(cookieFile, 
       '# Netscape HTTP Cookie File\n' + netscapeCookies + '\n', 
       'utf-8')
-    args.push('--cookies', cookieFile)
   }
 
+  const cookieArgs = cookieFile ? ['--cookies', cookieFile] : []
+
   try {
-  // Try different format strategies for Vercel compatibility
-  let stdout: string
-  try {
-    const result = await execFileAsync(bin, [...args, '-f', 'best', url], {
-      timeout: 45000, maxBuffer: 5 * 1024 * 1024,
-    })
-    stdout = result.stdout
-  } catch {
-    // "best" not available — try default format
-    try {
-      const result = await execFileAsync(bin, args.concat(url), {
-        timeout: 45000, maxBuffer: 5 * 1024 * 1024,
-      })
-      stdout = result.stdout
-    } catch {
-      // Last resort: use Android client + mobile user agent
-      const result = await execFileAsync(bin, [
-        ...args,
-        '--extractor-args', 'youtube:player_client=android,ios',
-        '--user-agent', 'com.google.android.youtube/19.29.37 (Linux; U; Android 14; US) gzip',
-        url,
-      ], {
-        timeout: 45000, maxBuffer: 5 * 1024 * 1024,
-      })
-      stdout = result.stdout
-    }
-  }
+    // Get the direct URL (-g) instead of dumping JSON
+    const { stdout: directUrl } = await execFileAsync(bin, [
+      ...cookieArgs,
+      '-f', 'best',
+      '-g',
+      '--no-warnings',
+      url,
+    ], { timeout: 45000, maxBuffer: 1024 * 1024 })
+
+    // Get metadata separately (without format restriction)
+    const { stdout: json } = await execFileAsync(bin, [
+      ...cookieArgs,
+      '--dump-json',
+      '--no-warnings',
+      url,
+    ], { timeout: 30000, maxBuffer: 1024 * 1024 })
 
     let info: any
-    try { info = JSON.parse(stdout.trim()) } catch {
+    try { info = JSON.parse(json.trim()) } catch {
       throw new Error('Failed to parse video info')
     }
 
-    if (!info?.title) throw new Error('Could not extract video data')
-    return info
+    return {
+      url: directUrl.trim(),
+      title: info.title,
+      quality: info.format_note ?? `${info.height ?? '?'}p`,
+      duration: info.duration_string ?? `${info.duration ?? 0}`,
+      thumbnail: info.thumbnail ?? null,
+    }
   } finally {
     if (cookieFile) await unlink(cookieFile).catch(() => {})
   }

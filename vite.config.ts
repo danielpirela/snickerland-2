@@ -15,6 +15,9 @@ export default defineConfig({
     viteReact(),
     nitro({
       preset: 'vercel',
+      serverAssets: [
+        { baseName: 'bin', dir: 'bin' },
+      ],
     }),
   ],
   test: {
